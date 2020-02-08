@@ -9,6 +9,8 @@ import (
 	"io/ioutil"
 	"net/http"
 	"os"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/aws/aws-lambda-go/events"
@@ -51,15 +53,15 @@ type V4Signer struct {
 	RoundTripper http.RoundTripper
 	Credentials  aws.CredentialsProvider
 	Region       string
+	Context      context.Context
 }
 
 // RoundTrip function
 func (s *V4Signer) RoundTrip(req *http.Request) (*http.Response, error) {
-	ctx := context.Background()
 	signer := v4.NewSigner(s.Credentials)
 	switch req.Body {
 	case nil:
-		_, err := signer.Sign(ctx, req, nil, "es", s.Region, time.Now())
+		_, err := signer.Sign(s.Context, req, nil, "es", s.Region, time.Now())
 		if err != nil {
 			return nil, fmt.Errorf("error signing request: %w", err)
 		}
@@ -68,7 +70,7 @@ func (s *V4Signer) RoundTrip(req *http.Request) (*http.Response, error) {
 		if err != nil {
 			return nil, err
 		}
-		_, err = signer.Sign(ctx, req, bytes.NewReader(b), "es", s.Region, time.Now())
+		_, err = signer.Sign(s.Context, req, bytes.NewReader(b), "es", s.Region, time.Now())
 		if err != nil {
 			return nil, fmt.Errorf("error signing request: %w", err)
 		}
@@ -77,7 +79,7 @@ func (s *V4Signer) RoundTrip(req *http.Request) (*http.Response, error) {
 	return s.RoundTripper.RoundTrip(req)
 }
 
-func handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
+func handler(ctx context.Context, request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
 	cfg, err := external.LoadDefaultAWSConfig()
 	if err != nil {
 		sentry.CaptureException(err)
@@ -94,6 +96,7 @@ func handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyRespo
 			RoundTripper: http.DefaultTransport,
 			Credentials:  cfg.Credentials,
 			Region:       cfg.Region,
+			Context:      ctx,
 		},
 	})
 	if err != nil {
@@ -105,27 +108,131 @@ func handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyRespo
 	}
 	fmt.Println(es.Info())
 
+	q := request.QueryStringParameters
+	var filter []map[string]interface{}
+	if itemID, ok := q["item_id"]; ok {
+		filter = append(filter, map[string]interface{}{
+			"terms": map[string][]string{
+				"item_id": strings.Split(itemID, ","),
+			},
+		})
+	}
+	if gender, ok := q["gender"]; ok {
+		filter = append(filter, map[string]interface{}{
+			"terms": map[string][]string{
+				"gender": strings.Split(gender, ","),
+			},
+		})
+	}
+	if brand, ok := q["brand"]; ok {
+		filter = append(filter, map[string]interface{}{
+			"terms": map[string][]string{
+				"brand": strings.Split(brand, ","),
+			},
+		})
+	}
+	if category, ok := q["category"]; ok {
+		filter = append(filter, map[string]interface{}{
+			"terms": map[string][]string{
+				"category": strings.Split(category, ","),
+			},
+		})
+	}
+	if discountFlag, ok := q["discount_flag"]; ok {
+		filter = append(filter, map[string]interface{}{
+			"terms": map[string][]string{
+				"discount_flag": strings.Split(discountFlag, ","),
+			},
+		})
+	}
+	if minPrice, ok := q["min_price"]; ok {
+		if price, err := strconv.Atoi(minPrice); err == nil {
+			filter = append(filter, map[string]interface{}{
+				"range": map[string]map[string]int{
+					"lowest_price": map[string]int{
+						"gte": price,
+					},
+				},
+			})
+		}
+	}
+	if maxPrice, ok := q["max_price"]; ok {
+		if price, err := strconv.Atoi(maxPrice); err == nil {
+			filter = append(filter, map[string]interface{}{
+				"range": map[string]map[string]int{
+					"lowest_price": map[string]int{
+						"lte": price,
+					},
+				},
+			})
+		}
+	}
+	if keywords, ok := q["keywords"]; ok {
+		filter = append(filter, map[string]interface{}{
+			"terms": map[string][]string{
+				"keywords": strings.Split(keywords, ","),
+			},
+		})
+	}
+	from := 0
+	if offset, ok := q["offset"]; ok {
+		if v, err := strconv.Atoi(offset); err == nil {
+			from = v
+		}
+	}
+	size := 36
+	if limit, ok := q["limit"]; ok {
+		if v, err := strconv.Atoi(limit); err == nil {
+			size = v
+		}
+	}
+	sort := map[string]interface{}{
+		"updated_at": map[string]string{
+			"order": "desc",
+		},
+	}
+	if order, ok := q["order"]; ok {
+		switch order {
+		case "new":
+			sort = map[string]interface{}{
+				"updated_at": map[string]string{
+					"order": "desc",
+				},
+			}
+		case "min-max":
+			sort = map[string]interface{}{
+				"lowest_price": map[string]string{
+					"order": "asc",
+				},
+			}
+		case "max-max":
+			sort = map[string]interface{}{
+				"lowest_price": map[string]string{
+					"order": "desc",
+				},
+			}
+		}
+	}
+	if excludeExpired, ok := q["exclude_expired"]; !ok && excludeExpired == "1" {
+		filter = append(filter, map[string]interface{}{
+			"terms": map[string][]int{
+				"release_flag": {0, 1},
+			},
+		})
+	}
+
 	var buf bytes.Buffer
 	query := map[string]interface{}{
 		"query": map[string]interface{}{
 			"bool": map[string]interface{}{
-				"filter": []map[string]interface{}{
-					{
-						"terms": map[string][]string{
-							"item_id": {"0399136004"},
-						},
-					},
-				},
+				"filter": filter,
 			},
 		},
-		"from": 0,
-		"size": 36,
-		"sort": map[string]interface{}{
-			"updated_at": map[string]string{
-				"order": "desc",
-			},
-		},
+		"from": from,
+		"size": size,
+		"sort": sort,
 	}
+
 	if err := json.NewEncoder(&buf).Encode(query); err != nil {
 		sentry.CaptureException(err)
 		return events.APIGatewayProxyResponse{
@@ -137,7 +244,7 @@ func handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyRespo
 	fmt.Printf("query search:%s\n", buf.String())
 
 	res, err := es.Search(
-		es.Search.WithContext(context.Background()),
+		es.Search.WithContext(ctx),
 		es.Search.WithIndex("items"),
 		es.Search.WithBody(&buf),
 	)
