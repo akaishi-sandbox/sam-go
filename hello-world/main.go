@@ -17,6 +17,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws/external"
 	v4 "github.com/aws/aws-sdk-go-v2/aws/signer/v4"
 	elasticsearch7 "github.com/elastic/go-elasticsearch/v7"
+	"github.com/getsentry/sentry-go"
 )
 
 var (
@@ -79,9 +80,10 @@ func (s *V4Signer) RoundTrip(req *http.Request) (*http.Response, error) {
 func handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
 	cfg, err := external.LoadDefaultAWSConfig()
 	if err != nil {
+		sentry.CaptureException(err)
 		return events.APIGatewayProxyResponse{
 			Body:       fmt.Sprintf("error"),
-			StatusCode: 500,
+			StatusCode: http.StatusInternalServerError,
 		}, err
 	}
 	es, err := elasticsearch7.NewClient(elasticsearch7.Config{
@@ -95,9 +97,10 @@ func handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyRespo
 		},
 	})
 	if err != nil {
+		sentry.CaptureException(err)
 		return events.APIGatewayProxyResponse{
 			Body:       fmt.Sprintf("error"),
-			StatusCode: 500,
+			StatusCode: http.StatusNotImplemented,
 		}, err
 	}
 	fmt.Println(es.Info())
@@ -106,9 +109,11 @@ func handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyRespo
 	query := map[string]interface{}{
 		"query": map[string]interface{}{
 			"bool": map[string]interface{}{
-				"filter": map[string]interface{}{
-					"terms": []map[string]string{
-						{"item_id": "10000"},
+				"filter": []map[string]interface{}{
+					{
+						"terms": map[string][]string{
+							"item_id": {"0399136004"},
+						},
 					},
 				},
 			},
@@ -122,11 +127,14 @@ func handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyRespo
 		},
 	}
 	if err := json.NewEncoder(&buf).Encode(query); err != nil {
+		sentry.CaptureException(err)
 		return events.APIGatewayProxyResponse{
 			Body:       fmt.Sprintf("error"),
-			StatusCode: 500,
+			StatusCode: http.StatusBadGateway,
 		}, err
 	}
+
+	fmt.Printf("query search:%s\n", buf.String())
 
 	res, err := es.Search(
 		es.Search.WithContext(context.Background()),
@@ -134,18 +142,20 @@ func handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyRespo
 		es.Search.WithBody(&buf),
 	)
 	if err != nil {
+		sentry.CaptureException(err)
 		return events.APIGatewayProxyResponse{
 			Body:       fmt.Sprintf("error"),
-			StatusCode: 500,
+			StatusCode: http.StatusServiceUnavailable,
 		}, err
 	}
 	defer res.Body.Close()
 	if res.IsError() {
 		var e map[string]interface{}
 		if err := json.NewDecoder(res.Body).Decode(&e); err != nil {
+			sentry.CaptureException(err)
 			return events.APIGatewayProxyResponse{
 				Body:       fmt.Sprintf("error"),
-				StatusCode: 500,
+				StatusCode: http.StatusGatewayTimeout,
 			}, err
 		} else {
 			return events.APIGatewayProxyResponse{
@@ -154,16 +164,17 @@ func handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyRespo
 					e["error"].(map[string]interface{})["type"],
 					e["error"].(map[string]interface{})["reason"],
 				),
-				StatusCode: 500,
+				StatusCode: http.StatusHTTPVersionNotSupported,
 			}, nil
 		}
 	}
 
 	var r map[string]interface{}
 	if err := json.NewDecoder(res.Body).Decode(&r); err != nil {
+		sentry.CaptureException(err)
 		return events.APIGatewayProxyResponse{
 			Body:       fmt.Sprintf("error"),
-			StatusCode: 500,
+			StatusCode: http.StatusVariantAlsoNegotiates,
 		}, err
 	}
 
@@ -173,10 +184,13 @@ func handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyRespo
 			int(r["hits"].(map[string]interface{})["total"].(map[string]interface{})["value"].(float64)),
 			int(r["took"].(float64)),
 		),
-		StatusCode: 200,
+		StatusCode: http.StatusOK,
 	}, nil
 }
 
 func main() {
+	sentry.Init(sentry.ClientOptions{
+		Dsn: os.Getenv("SENTRY_DSN"),
+	})
 	lambda.Start(handler)
 }
