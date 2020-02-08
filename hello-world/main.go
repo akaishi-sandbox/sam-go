@@ -285,12 +285,26 @@ func handler(ctx context.Context, request events.APIGatewayProxyRequest) (events
 		}, err
 	}
 
+	var body bytes.Buffer
+	if err := json.NewEncoder(&body).Encode(struct {
+		Total int `json:total`
+		Items interface{}
+	}{
+		Total: int(r["hits"].(map[string]interface{})["total"].(map[string]interface{})["value"].(float64)),
+		Items: r["hits"].(map[string]interface{})["hits"],
+	}); err != nil {
+		sentry.CaptureException(err)
+		return events.APIGatewayProxyResponse{
+			Body:       fmt.Sprintf("error"),
+			StatusCode: http.StatusBadGateway,
+		}, err
+	}
+
 	return events.APIGatewayProxyResponse{
-		Body: fmt.Sprintf("[%s] %d hits; took: %dms",
-			res.Status(),
-			int(r["hits"].(map[string]interface{})["total"].(map[string]interface{})["value"].(float64)),
-			int(r["took"].(float64)),
-		),
+		Headers: map[string]string{
+			"Content-Type": "application/json;charset=UTF-8",
+		},
+		Body:       body.String(),
 		StatusCode: http.StatusOK,
 	}, nil
 }
