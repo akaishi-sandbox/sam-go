@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -10,10 +11,11 @@ import (
 )
 
 func TestHandler(t *testing.T) {
+	ctx := context.Background()
 	t.Run("Unable to get IP", func(t *testing.T) {
 		DefaultHTTPGetAddress = "http://127.0.0.1:12345"
 
-		_, err := handler(events.APIGatewayProxyRequest{})
+		_, err := handler(ctx, events.APIGatewayProxyRequest{})
 		if err == nil {
 			t.Fatal("Error failed to trigger with an invalid request")
 		}
@@ -27,7 +29,7 @@ func TestHandler(t *testing.T) {
 
 		DefaultHTTPGetAddress = ts.URL
 
-		_, err := handler(events.APIGatewayProxyRequest{})
+		_, err := handler(ctx, events.APIGatewayProxyRequest{})
 		if err != nil && err.Error() != ErrNon200Response.Error() {
 			t.Fatalf("Error failed to trigger with an invalid HTTP response: %v", err)
 		}
@@ -41,7 +43,7 @@ func TestHandler(t *testing.T) {
 
 		DefaultHTTPGetAddress = ts.URL
 
-		_, err := handler(events.APIGatewayProxyRequest{})
+		_, err := handler(ctx, events.APIGatewayProxyRequest{})
 		if err == nil {
 			t.Fatal("Error failed to trigger with an invalid HTTP response")
 		}
@@ -56,7 +58,7 @@ func TestHandler(t *testing.T) {
 
 		DefaultHTTPGetAddress = ts.URL
 
-		_, err := handler(events.APIGatewayProxyRequest{})
+		_, err := handler(ctx, events.APIGatewayProxyRequest{})
 		if err != nil {
 			t.Fatal("Everything should be ok")
 		}
