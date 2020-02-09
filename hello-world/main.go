@@ -265,6 +265,10 @@ func handler(ctx context.Context, request events.APIGatewayProxyRequest) (events
 				StatusCode: http.StatusGatewayTimeout,
 			}, err
 		} else {
+			sentry.CaptureException(fmt.Errorf("[%s] %s: %s",
+				res.Status(),
+				e["error"].(map[string]interface{})["type"],
+				e["error"].(map[string]interface{})["reason"]))
 			return events.APIGatewayProxyResponse{
 				Body: fmt.Sprintf("[%s] %s: %s",
 					res.Status(),
@@ -287,7 +291,7 @@ func handler(ctx context.Context, request events.APIGatewayProxyRequest) (events
 
 	var body bytes.Buffer
 	if err := json.NewEncoder(&body).Encode(struct {
-		Total int `json:total`
+		Total int `json:"total"`
 		Items interface{}
 	}{
 		Total: int(r["hits"].(map[string]interface{})["total"].(map[string]interface{})["value"].(float64)),
