@@ -6,18 +6,15 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"net/http"
 	"os"
 	"strconv"
 	"strings"
-	"time"
 
+	"github.com/akaishi-sandbox/sam-go/pkg"
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-lambda-go/lambda"
-	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/aws/external"
-	v4 "github.com/aws/aws-sdk-go-v2/aws/signer/v4"
 	elasticsearch7 "github.com/elastic/go-elasticsearch/v7"
 	"github.com/getsentry/sentry-go"
 )
@@ -36,49 +33,6 @@ var (
 	ElasticsearchAddress = os.Getenv("ELASTICSEARCH_SERVICE_HOST_NAME")
 )
 
-// V4Signer is a http.RoundTripper implementation to sign requests according to
-// https://docs.aws.amazon.com/general/latest/gr/signature-version-4.html. Many libraries allow customizing the behavior
-// of HTTP requests, providing a transport. A V4Signer transport can be instantiated as follow:
-//
-// 	cfg, err := external.LoadDefaultAWSConfig()
-//	if err != nil {
-//		...
-//	}
-//	transport := &V4Signer{
-//		RoundTripper: http.DefaultTransport,
-//		Credentials:  cfg.Credentials,
-//		Region:       cfg.Region,
-//	}
-type V4Signer struct {
-	RoundTripper http.RoundTripper
-	Credentials  aws.CredentialsProvider
-	Region       string
-	Context      context.Context
-}
-
-// RoundTrip function
-func (s *V4Signer) RoundTrip(req *http.Request) (*http.Response, error) {
-	signer := v4.NewSigner(s.Credentials)
-	switch req.Body {
-	case nil:
-		_, err := signer.Sign(s.Context, req, nil, "es", s.Region, time.Now())
-		if err != nil {
-			return nil, fmt.Errorf("error signing request: %w", err)
-		}
-	default:
-		b, err := ioutil.ReadAll(req.Body)
-		if err != nil {
-			return nil, err
-		}
-		_, err = signer.Sign(s.Context, req, bytes.NewReader(b), "es", s.Region, time.Now())
-		if err != nil {
-			return nil, fmt.Errorf("error signing request: %w", err)
-		}
-		req.Body = ioutil.NopCloser(bytes.NewReader(b))
-	}
-	return s.RoundTripper.RoundTrip(req)
-}
-
 func handler(ctx context.Context, request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
 	cfg, err := external.LoadDefaultAWSConfig()
 	if err != nil {
@@ -92,7 +46,7 @@ func handler(ctx context.Context, request events.APIGatewayProxyRequest) (events
 		Addresses: []string{
 			ElasticsearchAddress,
 		},
-		Transport: &V4Signer{
+		Transport: &pkg.V4Signer{
 			RoundTripper: http.DefaultTransport,
 			Credentials:  cfg.Credentials,
 			Region:       cfg.Region,

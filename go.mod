@@ -1,4 +1,4 @@
-module github.com/galigalikun/sam-go
+module github.com/akaishi-sandbox/sam-go
 
 go 1.13
 
