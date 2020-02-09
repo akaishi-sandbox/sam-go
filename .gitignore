@@ -16,6 +16,6 @@
 # Dependency directories (remove the comment below to include it)
 # vendor/
 
-hello-world/hello-world
+bin/
 
 packaged.yaml

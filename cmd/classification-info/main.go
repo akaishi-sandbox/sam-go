@@ -14,8 +14,6 @@ import (
 	"github.com/akaishi-sandbox/sam-go/pkg"
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-lambda-go/lambda"
-	"github.com/aws/aws-sdk-go-v2/aws/external"
-	elasticsearch7 "github.com/elastic/go-elasticsearch/v7"
 	"github.com/getsentry/sentry-go"
 )
 
@@ -34,30 +32,12 @@ var (
 )
 
 func handler(ctx context.Context, request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
-	cfg, err := external.LoadDefaultAWSConfig()
+	es, err := pkg.NewElasticsearch(ctx, ElasticsearchAddress)
 	if err != nil {
 		sentry.CaptureException(err)
 		return events.APIGatewayProxyResponse{
 			Body:       fmt.Sprintf("error"),
 			StatusCode: http.StatusInternalServerError,
-		}, err
-	}
-	es, err := elasticsearch7.NewClient(elasticsearch7.Config{
-		Addresses: []string{
-			ElasticsearchAddress,
-		},
-		Transport: &pkg.V4Signer{
-			RoundTripper: http.DefaultTransport,
-			Credentials:  cfg.Credentials,
-			Region:       cfg.Region,
-			Context:      ctx,
-		},
-	})
-	if err != nil {
-		sentry.CaptureException(err)
-		return events.APIGatewayProxyResponse{
-			Body:       fmt.Sprintf("error"),
-			StatusCode: http.StatusNotImplemented,
 		}, err
 	}
 	fmt.Println(es.Info())
