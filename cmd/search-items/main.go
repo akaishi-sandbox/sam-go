@@ -39,13 +39,6 @@ func handler(ctx context.Context, request events.APIGatewayProxyRequest) (events
 			StatusCode: http.StatusInternalServerError,
 		}, err
 	}
-	if err != nil {
-		sentry.CaptureException(err)
-		return events.APIGatewayProxyResponse{
-			Body:       fmt.Sprintf("error"),
-			StatusCode: http.StatusInternalServerError,
-		}, err
-	}
 	fmt.Println(es.Info())
 
 	buf, err := searchitems.CreateSearchQuery(request.QueryStringParameters)
