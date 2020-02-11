@@ -76,8 +76,8 @@ func handler(ctx context.Context, request events.APIGatewayProxyRequest) (events
 
 	var body bytes.Buffer
 	if err := json.NewEncoder(&body).Encode(struct {
-		Total int `json:"total"`
-		Items interface{}
+		Total int         `json:"total"`
+		Items interface{} `json:"items"`
 	}{
 		Total: int(r["hits"].(map[string]interface{})["total"].(map[string]interface{})["value"].(float64)),
 		Items: r["hits"].(map[string]interface{})["hits"],
