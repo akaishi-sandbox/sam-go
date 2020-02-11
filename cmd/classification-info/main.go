@@ -50,7 +50,7 @@ func handler(ctx context.Context, request events.APIGatewayProxyRequest) (events
 		}, err
 	}
 
-	fmt.Printf("query search:%s\n", buf.String())
+	fmt.Printf("query search:%s : %s\n", index, buf.String())
 
 	res, err := es.Search(
 		es.Search.WithContext(ctx),

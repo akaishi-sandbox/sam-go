@@ -55,9 +55,17 @@ func CreateSearchQuery(q map[string]string) (string, bytes.Buffer, error) {
 		"sort": sort,
 	}
 
-	var index string
-	if index, ok := q["index"]; !ok {
+	index, ok := q["index"]
+	if !ok {
 		return index, buf, fmt.Errorf("parameter not found")
+	}
+	switch index {
+	case "categories", "brands":
+		{
+
+		}
+	default:
+		return index, buf, fmt.Errorf("not supported index")
 	}
 
 	if err := json.NewEncoder(&buf).Encode(query); err != nil {
