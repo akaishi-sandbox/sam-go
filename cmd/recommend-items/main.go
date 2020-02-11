@@ -9,7 +9,7 @@ import (
 	"net/http"
 	"os"
 
-	classificationinfo "github.com/akaishi-sandbox/sam-go/internal/classification-info"
+	recommenditems "github.com/akaishi-sandbox/sam-go/internal/recommend-items"
 	"github.com/akaishi-sandbox/sam-go/pkg"
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-lambda-go/lambda"
@@ -41,7 +41,7 @@ func handler(ctx context.Context, request events.APIGatewayProxyRequest) (events
 	}
 	fmt.Println(es.Info())
 
-	index, buf, err := classificationinfo.CreateSearchQuery(request.QueryStringParameters)
+	buf, err := recommenditems.CreateSourceItem(request.QueryStringParameters)
 	if err != nil {
 		sentry.CaptureException(err)
 		return events.APIGatewayProxyResponse{
@@ -50,11 +50,11 @@ func handler(ctx context.Context, request events.APIGatewayProxyRequest) (events
 		}, err
 	}
 
-	fmt.Printf("query search:%s : %s\n", index, buf.String())
+	fmt.Printf("query search: %s\n", buf.String())
 
 	res, err := es.Search(
 		es.Search.WithContext(ctx),
-		es.Search.WithIndex(index),
+		es.Search.WithIndex("items"),
 		es.Search.WithBody(&buf),
 	)
 	if err != nil {
@@ -73,6 +73,20 @@ func handler(ctx context.Context, request events.APIGatewayProxyRequest) (events
 			StatusCode: http.StatusInternalServerError,
 		}, err
 	}
+
+	buf, err = recommenditems.CreateRecommendItems(r["hits"].(map[string]interface{})["hits"].([]interface{})[0].(map[string]interface{})["_source"].(map[string]interface{}), request.QueryStringParameters)
+	if err != nil {
+		sentry.CaptureException(err)
+		return events.APIGatewayProxyResponse{
+			Body:       fmt.Sprintf("error"),
+			StatusCode: http.StatusInternalServerError,
+		}, err
+	}
+	res, err = es.Search(
+		es.Search.WithContext(ctx),
+		es.Search.WithIndex("items"),
+		es.Search.WithBody(&buf),
+	)
 
 	var body bytes.Buffer
 	if err := json.NewEncoder(&body).Encode(struct {
