@@ -1,14 +1,18 @@
 AWSTemplateFormatVersion: '2010-09-09'
 Transform: AWS::Serverless-2016-10-31
 Description: >
-  sam-go
+  toc-lambda-api
 
-  Sample SAM Template for sam-go
+  toc for lambda api
 
 # More info about Globals: https://github.com/awslabs/serverless-application-model/blob/master/docs/globals.rst
 Globals:
   Function:
     Timeout: 120
+    Environment:
+      Variables:
+        ELASTICSEARCH_SERVICE_HOST_NAME: $ELASTICSEARCH_SERVICE_HOST_NAME
+        SENTRY_DSN: $SENTRY_DSN
 
 Resources:
   SearchItems:
@@ -24,10 +28,6 @@ Resources:
           Properties:
             Path: /search-items
             Method: GET
-      Environment: # More info about Env Vars: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#environment-object
-        Variables:
-          ELASTICSEARCH_SERVICE_HOST_NAME: $ELASTICSEARCH_SERVICE_HOST_NAME
-          SENTRY_DSN: $SENTRY_DSN
   ClassificationInfo:
     Type: AWS::Serverless::Function # More info about Function Resource: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#awsserverlessfunction
     Properties:
@@ -41,10 +41,6 @@ Resources:
           Properties:
             Path: /classification-info
             Method: GET
-      Environment: # More info about Env Vars: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#environment-object
-        Variables:
-          ELASTICSEARCH_SERVICE_HOST_NAME: $ELASTICSEARCH_SERVICE_HOST_NAME
-          SENTRY_DSN: $SENTRY_DSN
   RecommendItems:
     Type: AWS::Serverless::Function # More info about Function Resource: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#awsserverlessfunction
     Properties:
@@ -58,21 +54,3 @@ Resources:
           Properties:
             Path: /recommend-items
             Method: GET
-      Environment: # More info about Env Vars: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#environment-object
-        Variables:
-          ELASTICSEARCH_SERVICE_HOST_NAME: $ELASTICSEARCH_SERVICE_HOST_NAME
-          SENTRY_DSN: $SENTRY_DSN
-
-Outputs:
-  # ServerlessRestApi is an implicit API created out of Events key under Serverless::Function
-  # Find out more about other implicit resources you can reference within SAM
-  # https://github.com/awslabs/serverless-application-model/blob/master/docs/internals/generated_resources.rst#api
-  SearchItemsAPI:
-    Description: "API Gateway endpoint URL for Prod environment for First Function"
-    Value: !Sub "https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/search-items/"
-  SearchItems:
-    Description: "First Lambda Function ARN"
-    Value: !GetAtt SearchItems.Arn
-  SearchItemsIamRole:
-    Description: "Implicit IAM Role created for Hello World function"
-    Value: !GetAtt SearchItemsRole.Arn
