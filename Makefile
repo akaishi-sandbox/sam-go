@@ -21,4 +21,4 @@ package:
 	sam package --region ap-northeast-1 --s3-bucket unisize-artifacts --s3-prefix toc-lambda --template-file ./template.yaml --output-template-file template-packaged.yml
 
 deploy:
-	sam deploy --region ap-northeast-1 --template-file template-packaged.yml --stack-name toc-api --capabilities CAPABILITY_NAMED_IAM CAPABILITY_IAM --parameter-overrides $(jq -r 'to_entries[] | \"\\(.key)=\\(.value)\"' ./env.json)
+	sam deploy --region ap-northeast-1 --template-file template-packaged.yml --stack-name toc-api --capabilities CAPABILITY_NAMED_IAM CAPABILITY_IAM --parameter-overrides $$(jq -r 'to_entries[] | "\(.key)=\(.value)"' ./prod.json)

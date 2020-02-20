@@ -5,14 +5,23 @@ Description: >
 
   toc for lambda api
 
+Parameters:
+    ElasticsearchServiceHostName:
+      Type: String
+    Region:
+      Type: String
+    SentryDsn:
+      Type: String
+
 # More info about Globals: https://github.com/awslabs/serverless-application-model/blob/master/docs/globals.rst
 Globals:
   Function:
     Timeout: 120
     Environment:
       Variables:
-        ELASTICSEARCH_SERVICE_HOST_NAME: $ELASTICSEARCH_SERVICE_HOST_NAME
-        SENTRY_DSN: $SENTRY_DSN
+        REGION: !Ref Region
+        ELASTICSEARCH_SERVICE_HOST_NAME: !Ref ElasticsearchServiceHostName
+        SENTRY_DSN: !Ref SentryDsn
 
 Resources:
   SearchItems:
@@ -22,6 +31,7 @@ Resources:
       Handler: search-items
       Runtime: go1.x
       Tracing: Active # https://docs.aws.amazon.com/lambda/latest/dg/lambda-x-ray.html
+      Role: !GetAtt ApiRole.Arn
       Events:
         CatchAll:
           Type: Api # More info about API Event Source: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#api
@@ -35,6 +45,7 @@ Resources:
       Handler: classification-info
       Runtime: go1.x
       Tracing: Active # https://docs.aws.amazon.com/lambda/latest/dg/lambda-x-ray.html
+      Role: !GetAtt ApiRole.Arn
       Events:
         CatchAll:
           Type: Api # More info about API Event Source: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#api
@@ -48,9 +59,43 @@ Resources:
       Handler: recommend-items
       Runtime: go1.x
       Tracing: Active # https://docs.aws.amazon.com/lambda/latest/dg/lambda-x-ray.html
+      Role: !GetAtt ApiRole.Arn
       Events:
         CatchAll:
           Type: Api # More info about API Event Source: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#api
           Properties:
             Path: /recommend-items
             Method: GET
+  ApiRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: "Allow"
+            Action: "sts:AssumeRole"
+            Principal:
+              Service: lambda.amazonaws.com
+      Policies:
+        - PolicyName: "api-policy"
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: "Allow"
+                Action:
+                  - "xray:PutTraceSegments"
+                  - "xray:PutTelemetryRecords"
+                  - "xray:GetSamplingRules"
+                  - "xray:GetSamplingTargets"
+                  - "xray:GetSamplingStatisticSummaries"
+                Resource: "*"
+              - Effect: "Allow"
+                Action:
+                  - "logs:CreateLogGroup"
+                  - "logs:CreateLogStream"
+                  - "logs:PutLogEvents"
+                Resource: "*"
+              - Effect: "Allow"
+                Action:
+                  - "es:ESHttpPost"
+                Resource: "*"
