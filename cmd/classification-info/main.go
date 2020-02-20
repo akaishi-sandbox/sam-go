@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"time"
 
 	classificationinfo "github.com/akaishi-sandbox/sam-go/internal/classification-info"
 	"github.com/akaishi-sandbox/sam-go/pkg"
@@ -102,5 +103,7 @@ func main() {
 	sentry.Init(sentry.ClientOptions{
 		Dsn: os.Getenv("SENTRY_DSN"),
 	})
+	defer sentry.Flush(time.Second * 5)
+	defer sentry.Recover()
 	lambda.Start(handler)
 }

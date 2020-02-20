@@ -37,10 +37,9 @@ func ElasticsearchParse(res *esapi.Response) (map[string]interface{}, error) {
 		if err := json.NewDecoder(res.Body).Decode(&e); err != nil {
 			return nil, err
 		}
-		return nil, fmt.Errorf("[%s] %s: %s",
+		return nil, fmt.Errorf("[%s] %v",
 			res.Status(),
-			e["error"].(map[string]interface{})["type"],
-			e["error"].(map[string]interface{})["reason"],
+			e,
 		)
 	}
 	var r map[string]interface{}
