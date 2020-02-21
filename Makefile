@@ -10,9 +10,9 @@ test:
 	go test  -v ./...
 
 build:
-	GO111MODULE=on GOOS=linux GOARCH=amd64 go build -o bin/search-items ./cmd/search-items
-	GO111MODULE=on GOOS=linux GOARCH=amd64 go build -o bin/classification-info ./cmd/classification-info
-	GO111MODULE=on GOOS=linux GOARCH=amd64 go build -o bin/recommend-items ./cmd/recommend-items
+	GO111MODULE=on GOOS=linux GOARCH=amd64 go build -o bin/search-items ./function/search-items
+	GO111MODULE=on GOOS=linux GOARCH=amd64 go build -o bin/classification-info ./function/classification-info
+	GO111MODULE=on GOOS=linux GOARCH=amd64 go build -o bin/recommend-items ./function/recommend-items
 
 local:
 	sam local start-api -p 3001 -t ./template.yaml --env-vars ./env.json --region ap-northeast-1
