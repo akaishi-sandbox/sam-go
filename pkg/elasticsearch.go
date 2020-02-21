@@ -2,6 +2,8 @@ package pkg
 
 import (
 	"context"
+	"log"
+	"os"
 
 	"github.com/aws/aws-sdk-go/aws/session"
 	aws "github.com/olivere/elastic/aws/v4"
@@ -60,5 +62,7 @@ func NewElasticsearch(ctx context.Context, elasticsearchAddress string) (*elasti
 		elastic.SetSniff(false),
 		elastic.SetHealthcheck(false),
 		elastic.SetHttpClient(signingClient),
+		elastic.SetInfoLog(log.New(os.Stdout, "", log.LstdFlags)),
+		elastic.SetErrorLog(log.New(os.Stderr, "ELASTIC ", log.LstdFlags)),
 	)
 }

@@ -49,7 +49,7 @@ func CreateSearchQuery(q map[string]string) *pkg.SearchQuery {
 	}
 	if keywords, ok := q["keywords"]; ok && len(keywords) > 0 {
 		// 全角スペースを半角スペースにした後、半角スペースで分解する
-		for _, keyword := range strings.Split(strings.NewReplacer("　", " ").Replace(keywords), ",") {
+		for _, keyword := range strings.Split(strings.NewReplacer("　", " ").Replace(keywords), " ") {
 			// キーワードの中にスラッシュがある場合ORとして評価する
 			if strings.Index(keyword, "/") != -1 {
 				q := elastic.NewBoolQuery()
