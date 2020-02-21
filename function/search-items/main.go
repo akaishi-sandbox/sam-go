@@ -15,6 +15,7 @@ import (
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-lambda-go/lambda"
 	"github.com/getsentry/sentry-go"
+	elastic "github.com/olivere/elastic/v7"
 )
 
 var (
@@ -40,33 +41,15 @@ func handler(ctx context.Context, request events.APIGatewayProxyRequest) (events
 			StatusCode: http.StatusInternalServerError,
 		}, err
 	}
-	fmt.Println(es.Info())
 
-	buf, err := searchitems.CreateSearchQuery(request.QueryStringParameters)
-	if err != nil {
-		sentry.CaptureException(err)
-		return events.APIGatewayProxyResponse{
-			Body:       fmt.Sprintf("error"),
-			StatusCode: http.StatusInternalServerError,
-		}, err
-	}
+	query := searchitems.CreateSearchQuery(request.QueryStringParameters)
 
-	fmt.Printf("query search:%s\n", buf.String())
+	q, _ := query.Query.Source()
 
-	res, err := es.Search(
-		es.Search.WithContext(ctx),
-		es.Search.WithIndex("items"),
-		es.Search.WithBody(&buf),
-	)
-	if err != nil {
-		sentry.CaptureException(err)
-		return events.APIGatewayProxyResponse{
-			Body:       fmt.Sprintf("error"),
-			StatusCode: http.StatusInternalServerError,
-		}, err
-	}
-	defer res.Body.Close()
-	r, err := pkg.ElasticsearchParse(res)
+	fmt.Printf("query search:%v\n", q)
+
+	searchResult, err := query.Search(ctx, es)
+
 	if err != nil {
 		sentry.CaptureException(err)
 		return events.APIGatewayProxyResponse{
@@ -77,11 +60,11 @@ func handler(ctx context.Context, request events.APIGatewayProxyRequest) (events
 
 	var body bytes.Buffer
 	if err := json.NewEncoder(&body).Encode(struct {
-		Total int         `json:"total"`
-		Items interface{} `json:"items"`
+		Total int64                `json:"total"`
+		Items []*elastic.SearchHit `json:"items"`
 	}{
-		Total: int(r["hits"].(map[string]interface{})["total"].(map[string]interface{})["value"].(float64)),
-		Items: r["hits"].(map[string]interface{})["hits"],
+		Total: searchResult.TotalHits(),
+		Items: searchResult.Hits.Hits,
 	}); err != nil {
 		sentry.CaptureException(err)
 		return events.APIGatewayProxyResponse{

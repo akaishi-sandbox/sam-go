@@ -1,0 +1,42 @@
+name: Go
+on: [push, pull_request]
+jobs:
+
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    steps:
+
+    - name: Set up Go 1.13
+      uses: actions/setup-go@v1
+      with:
+        go-version: 1.13
+      id: go
+
+    - name: Check out code into the Go module directory
+      uses: actions/checkout@v1
+
+    - name: Lint
+      run: |
+        set -xe
+        export GOPATH=`go env GOPATH`
+        export PATH=$GOPATH/bin:$PATH
+        go get -u golang.org/x/lint/golint
+        ! gofmt -d . | grep '^'
+        make lint
+      env:
+        GO111MODULE: "on"
+
+    - name: Test
+      run: |
+        set -xe
+        make test
+      env:
+        GO111MODULE: "on"
+
+    - name: Build
+      run: |
+        set -xe
+        make build
+      env:
+        GO111MODULE: "on"

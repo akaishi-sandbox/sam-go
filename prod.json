@@ -1,5 +1,5 @@
 {
   "Region": "ap-northeast-1",
-  "ElasticsearchServiceHostName": "https://search-toc-unisize-dev-iic5v77crekyltj5yz2sh5vzry.ap-northeast-1.es.amazonaws.com",
+  "ElasticsearchServiceHostName": "https://search-toc-unisize-dev-g3mp6xizrzee33qxf5wxhdl2be.ap-northeast-1.es.amazonaws.com",
   "SentryDsn": "https://b50f94103a4447d4b11f7f6e43e80f67@sentry.io/2699273"
 }

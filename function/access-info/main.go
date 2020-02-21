@@ -8,9 +8,9 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"reflect"
 	"time"
 
-	recommenditems "github.com/akaishi-sandbox/sam-go/internal/recommend-items"
 	searchitems "github.com/akaishi-sandbox/sam-go/internal/search-items"
 	"github.com/akaishi-sandbox/sam-go/pkg"
 	"github.com/aws/aws-lambda-go/events"
@@ -43,9 +43,8 @@ func handler(ctx context.Context, request events.APIGatewayProxyRequest) (events
 		}, err
 	}
 
-	item, err := searchitems.GetSourceItem(ctx, es, request.QueryStringParameters)
+	query, err := searchitems.CreateSearchItems(request.QueryStringParameters)
 	if err != nil {
-		fmt.Println("GetSourceItem error")
 		sentry.CaptureException(err)
 		return events.APIGatewayProxyResponse{
 			Body:       fmt.Sprintf("error"),
@@ -53,11 +52,8 @@ func handler(ctx context.Context, request events.APIGatewayProxyRequest) (events
 		}, err
 	}
 
-	searchResult, err := recommenditems.
-		CreateRecommendItems(*item, request.QueryStringParameters).
-		Search(ctx, es)
+	searchResult, err := query.Search(ctx, es)
 	if err != nil {
-		fmt.Println("CreateRecommendItems error")
 		sentry.CaptureException(err)
 		return events.APIGatewayProxyResponse{
 			Body:       fmt.Sprintf("error"),
@@ -65,13 +61,33 @@ func handler(ctx context.Context, request events.APIGatewayProxyRequest) (events
 		}, err
 	}
 
+	// 更新元の商品はIDを元に検索しているので複数個存在する場合がある、そのためアクセス回数の最も大きい値を更新元の数字として取得する
+	numberOfAccess := 0
+	var iType searchitems.Item
+	for _, item := range searchResult.Each(reflect.TypeOf(iType)) {
+		if i, ok := item.(searchitems.Item); ok {
+			if i.AccessCounter > numberOfAccess {
+				numberOfAccess = i.AccessCounter
+			}
+		}
+	}
+	numberOfAccess++
+	lastAccessedAt := time.Now()
+
+	for _, hit := range searchResult.Hits.Hits {
+		es.Update().Index(hit.Index).Id(hit.Id).
+			Script(elastic.NewScript("ctx._source.access_counter = params.access_counter").Param("access_counter", numberOfAccess)).
+			Script(elastic.NewScript("ctx._source.last_accessed_at = params.last_accessed_at").Param("last_accessed_at", lastAccessedAt)).
+			Do(ctx)
+	}
+
 	var body bytes.Buffer
 	if err := json.NewEncoder(&body).Encode(struct {
 		Total int64                `json:"total"`
-		Items []*elastic.SearchHit `json:"items"`
+		Hits  []*elastic.SearchHit `json:"hits"`
 	}{
 		Total: searchResult.TotalHits(),
-		Items: searchResult.Hits.Hits,
+		Hits:  searchResult.Hits.Hits,
 	}); err != nil {
 		sentry.CaptureException(err)
 		return events.APIGatewayProxyResponse{

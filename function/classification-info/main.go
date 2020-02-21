@@ -15,6 +15,7 @@ import (
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-lambda-go/lambda"
 	"github.com/getsentry/sentry-go"
+	elastic "github.com/olivere/elastic/v7"
 )
 
 var (
@@ -40,9 +41,8 @@ func handler(ctx context.Context, request events.APIGatewayProxyRequest) (events
 			StatusCode: http.StatusInternalServerError,
 		}, err
 	}
-	fmt.Println(es.Info())
 
-	index, buf, err := classificationinfo.CreateSearchQuery(request.QueryStringParameters)
+	query, err := classificationinfo.CreateSearchQuery(request.QueryStringParameters)
 	if err != nil {
 		sentry.CaptureException(err)
 		return events.APIGatewayProxyResponse{
@@ -51,13 +51,7 @@ func handler(ctx context.Context, request events.APIGatewayProxyRequest) (events
 		}, err
 	}
 
-	fmt.Printf("query search:%s : %s\n", index, buf.String())
-
-	res, err := es.Search(
-		es.Search.WithContext(ctx),
-		es.Search.WithIndex(index),
-		es.Search.WithBody(&buf),
-	)
+	searchResult, err := query.Search(ctx, es)
 	if err != nil {
 		sentry.CaptureException(err)
 		return events.APIGatewayProxyResponse{
@@ -65,23 +59,14 @@ func handler(ctx context.Context, request events.APIGatewayProxyRequest) (events
 			StatusCode: http.StatusServiceUnavailable,
 		}, err
 	}
-	defer res.Body.Close()
-	r, err := pkg.ElasticsearchParse(res)
-	if err != nil {
-		sentry.CaptureException(err)
-		return events.APIGatewayProxyResponse{
-			Body:       fmt.Sprintf("error"),
-			StatusCode: http.StatusInternalServerError,
-		}, err
-	}
 
 	var body bytes.Buffer
 	if err := json.NewEncoder(&body).Encode(struct {
-		Total int         `json:"total"`
-		Hits  interface{} `json:"hits"`
+		Total int64                `json:"total"`
+		Hits  []*elastic.SearchHit `json:"hits"`
 	}{
-		Total: int(r["hits"].(map[string]interface{})["total"].(map[string]interface{})["value"].(float64)),
-		Hits:  r["hits"].(map[string]interface{})["hits"],
+		Total: searchResult.TotalHits(),
+		Hits:  searchResult.Hits.Hits,
 	}); err != nil {
 		sentry.CaptureException(err)
 		return events.APIGatewayProxyResponse{

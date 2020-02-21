@@ -1,46 +1,26 @@
 package classificationinfo
 
 import (
-	"bytes"
-	"encoding/json"
-	"fmt"
 	"strconv"
 	"strings"
+
+	searchitems "github.com/akaishi-sandbox/sam-go/internal/search-items"
+	"github.com/akaishi-sandbox/sam-go/pkg"
+	elastic "github.com/olivere/elastic/v7"
 )
 
 // CreateRecommendItems elastic search query
-func CreateRecommendItems(r map[string]interface{}, q map[string]string) (bytes.Buffer, error) {
-	var buf bytes.Buffer
-	var filter []map[string]interface{}
-	var must_not []map[string]interface{}
+func CreateRecommendItems(item searchitems.Item, q map[string]string) *pkg.SearchQuery {
+	query := elastic.NewBoolQuery()
 	if itemID, ok := q["item_id"]; ok {
-		must_not = append(must_not, map[string]interface{}{
-			"terms": map[string][]string{
-				"item_id": strings.Split(itemID, ","),
-			},
-		})
+		query = query.MustNot(elastic.NewTermQuery("item_id", itemID))
 	}
 	if brand, ok := q["brand"]; ok {
-		filter = append(must_not, map[string]interface{}{
-			"terms": map[string][]string{
-				"brand": strings.Split(brand, ","),
-			},
-		})
+		query = query.Filter(pkg.NewTermsString("brand", strings.Split(brand, ",")))
 	}
-	if gender, ok := r["gender"]; ok {
-		filter = append(filter, map[string]interface{}{
-			"terms": map[string][]string{
-				"gender": strings.Split(gender.(string), ","),
-			},
-		})
-	}
-	if category, ok := r["category"]; ok {
-		filter = append(filter, map[string]interface{}{
-			"terms": map[string][]string{
-				"category": strings.Split(category.(string), ","),
-			},
-		})
-	}
+	query = query.Filter(pkg.NewTermsString("gender", strings.Split(item.Gender, ",")))
+	query = query.Filter(pkg.NewTermsString("category", strings.Split(item.Category, ",")))
+
 	from := 0
 	if offset, ok := q["offset"]; ok {
 		if v, err := strconv.Atoi(offset); err == nil {
@@ -54,56 +34,10 @@ func CreateRecommendItems(r map[string]interface{}, q map[string]string) (bytes.
 		}
 	}
 
-	query := map[string]interface{}{
-		"query": map[string]interface{}{
-			"bool": map[string]interface{}{
-				"filter":   filter,
-				"must_not": must_not,
-			},
-		},
-		"from": from,
-		"size": size,
-		"sort": map[string]map[string]string{
-			"updated_at": map[string]string{
-				"order": "desc",
-			},
-		},
+	return &pkg.SearchQuery{
+		Index: "items",
+		Query: query,
+		From:  from,
+		Size:  size,
 	}
-
-	if err := json.NewEncoder(&buf).Encode(query); err != nil {
-		return buf, err
-	}
-
-	return buf, nil
-}
-
-// CreateSourceItem elastic search query
-func CreateSourceItem(q map[string]string) (bytes.Buffer, error) {
-	var buf bytes.Buffer
-	var filter []map[string]interface{}
-	itemID, ok := q["item_id"]
-	if !ok {
-		return buf, fmt.Errorf("parameter not found")
-	}
-	filter = append(filter, map[string]interface{}{
-		"terms": map[string][]string{
-			"item_id": strings.Split(itemID, ","),
-		},
-	})
-
-	query := map[string]interface{}{
-		"query": map[string]interface{}{
-			"bool": map[string]interface{}{
-				"filter": filter,
-			},
-		},
-		"from": 0,
-		"size": 1,
-	}
-
-	if err := json.NewEncoder(&buf).Encode(query); err != nil {
-		return buf, err
-	}
-
-	return buf, nil
 }

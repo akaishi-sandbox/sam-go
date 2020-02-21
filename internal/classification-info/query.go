@@ -1,29 +1,22 @@
 package classificationinfo
 
 import (
-	"bytes"
-	"encoding/json"
 	"fmt"
 	"strconv"
 	"strings"
+
+	"github.com/akaishi-sandbox/sam-go/pkg"
+	elastic "github.com/olivere/elastic/v7"
 )
 
 // CreateSearchQuery elastic search query
-func CreateSearchQuery(q map[string]string) (string, bytes.Buffer, error) {
-	var filter []map[string]interface{}
+func CreateSearchQuery(q map[string]string) (*pkg.SearchQuery, error) {
+	query := elastic.NewBoolQuery()
 	if gender, ok := q["gender"]; ok {
-		filter = append(filter, map[string]interface{}{
-			"terms": map[string][]string{
-				"gender": strings.Split(gender, ","),
-			},
-		})
+		query = query.Filter(pkg.NewTermsString("gender", strings.Split(gender, ",")))
 	}
 	if title, ok := q["title"]; ok {
-		filter = append(filter, map[string]interface{}{
-			"terms": map[string][]string{
-				"title": strings.Split(title, ","),
-			},
-		})
+		query = query.Filter(pkg.NewTermsString("title", strings.Split(title, ",")))
 	}
 	from := 0
 	if offset, ok := q["offset"]; ok {
@@ -37,40 +30,24 @@ func CreateSearchQuery(q map[string]string) (string, bytes.Buffer, error) {
 			size = v
 		}
 	}
-	sort := map[string]interface{}{
-		"sort_no": map[string]string{
-			"order": "asc",
-		},
-	}
 
-	var buf bytes.Buffer
-	query := map[string]interface{}{
-		"query": map[string]interface{}{
-			"bool": map[string]interface{}{
-				"filter": filter,
-			},
-		},
-		"from": from,
-		"size": size,
-		"sort": sort,
-	}
+	sort := elastic.SortInfo{Field: "sort_no", Ascending: true}
 
 	index, ok := q["index"]
 	if !ok {
-		return index, buf, fmt.Errorf("parameter not found")
+		return nil, fmt.Errorf("parameter not found")
 	}
 	switch index {
 	case "categories", "brands":
-		{
-
-		}
+		return &pkg.SearchQuery{
+			Index:    index,
+			Query:    query,
+			SortInfo: sort,
+			From:     from,
+			Size:     size,
+		}, nil
 	default:
-		return index, buf, fmt.Errorf("not supported index")
+		return nil, fmt.Errorf("not supported index")
 	}
 
-	if err := json.NewEncoder(&buf).Encode(query); err != nil {
-		return index, buf, err
-	}
-
-	return index, buf, nil
 }
