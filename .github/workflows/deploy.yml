@@ -21,7 +21,6 @@ jobs:
     - name: sam install
       run: |
         set -xe
-        apk --update --no-cache add jq curl bash gcc musl-dev
         pip install aws-sam-cli
 
     - name: Build
