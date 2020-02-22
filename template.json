@@ -1,0 +1,5 @@
+{
+    "Region": "${AWS_DEFAULT_REGION}",
+    "ElasticsearchServiceHostName": "${ELASTICSEARCH_SERVICE_HOST_NAME}",
+    "SentryDsn": "${SENTRY_DSN}"
+}

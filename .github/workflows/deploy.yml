@@ -22,7 +22,7 @@ jobs:
     - name: sam install
       run: |
         set -xe
-        sudo apt-get install -y --no-install-recommends python3-setuptools
+        sudo apt-get install -y --no-install-recommends gettext-base python3-setuptools
         sudo python3 -m pip install --user --upgrade setuptools wheel
         sudo pip3 install aws-sam-cli
         sam --help
@@ -47,13 +47,7 @@ jobs:
     - name: Deploy
       run: |
         set -xe
-cat << EOS
-{
-  "Region": "${AWS_DEFAULT_REGION}",
-  "ElasticsearchServiceHostName": "${ELASTICSEARCH_SERVICE_HOST_NAME}",
-  "SentryDsn": "${SENTRY_DSN}"
-}
-EOS > prod.json
+        envsubst < template.json > prod.json
         make deploy
       env:
         AWS_ACCESS_KEY_ID: ${{ secrets.DEV_AWS_ACCESS_KEY_ID }}
@@ -80,7 +74,7 @@ EOS > prod.json
     - name: sam install
       run: |
         set -xe
-        sudo apt-get install -y --no-install-recommends python3-setuptools
+        sudo apt-get install -y --no-install-recommends gettext-base python3-setuptools
         sudo python3 -m pip install --user --upgrade setuptools wheel
         sudo pip3 install aws-sam-cli
         sam --help
@@ -105,13 +99,7 @@ EOS > prod.json
     - name: Deploy
       run: |
         set -xe
-cat << EOS
-{
-  "Region": "${AWS_DEFAULT_REGION}",
-  "ElasticsearchServiceHostName": "${ELASTICSEARCH_SERVICE_HOST_NAME}",
-  "SentryDsn": "${SENTRY_DSN}"
-}
-EOS > prod.json
+        envsubst < template.json > prod.json
         make deploy
       env:
         AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
