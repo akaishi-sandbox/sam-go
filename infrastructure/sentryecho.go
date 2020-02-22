@@ -17,6 +17,7 @@ type handler struct {
 	timeout         time.Duration
 }
 
+// SentryechoOptions struct
 type SentryechoOptions struct {
 	// Repanic configures whether Sentry should repanic after recovery, in most cases it should be set to true,
 	// as echo includes it's own Recover middleware what handles http responses.

@@ -10,11 +10,13 @@ import (
 	elastic "github.com/olivere/elastic/v7"
 )
 
+// ElasticHandler struct
 type ElasticHandler struct {
 	Client  *elastic.Client
 	Context context.Context
 }
 
+// ElasticQuery struct
 type ElasticQuery struct {
 	Index    string
 	Query    *elastic.BoolQuery
@@ -23,6 +25,7 @@ type ElasticQuery struct {
 	Size     int
 }
 
+// Search function
 func (handler *ElasticHandler) Search(eq *ElasticQuery) (*elastic.SearchResult, error) {
 	return handler.Client.Search().
 		Index(eq.Index).
@@ -34,6 +37,7 @@ func (handler *ElasticHandler) Search(eq *ElasticQuery) (*elastic.SearchResult, 
 		Do(handler.Context)
 }
 
+// Update function
 func (handler *ElasticHandler) Update(hit *elastic.SearchHit, update interface{}) (*elastic.UpdateResponse, error) {
 	return handler.Client.Update().Index(hit.Index).Id(hit.Id).
 		// Script(elastic.NewScript("ctx._source.access_counter = params.access_counter").Param("access_counter", numberOfAccess)).

@@ -9,10 +9,12 @@ import (
 	"github.com/labstack/echo"
 )
 
+// ItemController struct
 type ItemController struct {
 	Interactor usecase.ItemInteractor
 }
 
+// NewItemController instance
 func NewItemController(elasticHandler *infrastructure.ElasticHandler) *ItemController {
 	return &ItemController{
 		Interactor: usecase.ItemInteractor{
@@ -33,6 +35,7 @@ func (controller *ItemController) queryStringParameters(c echo.Context) map[stri
 	return parameters
 }
 
+// Search function
 func (controller *ItemController) Search(c echo.Context) (err error) {
 	searchResult, err := controller.Interactor.Search(controller.queryStringParameters(c))
 	if err != nil {
@@ -43,6 +46,7 @@ func (controller *ItemController) Search(c echo.Context) (err error) {
 	return
 }
 
+// Recommend function
 func (controller *ItemController) Recommend(c echo.Context) (err error) {
 	searchResult, err := controller.Interactor.Recommend(controller.queryStringParameters(c))
 	if err != nil {
@@ -53,6 +57,7 @@ func (controller *ItemController) Recommend(c echo.Context) (err error) {
 	return
 }
 
+// Classification function
 func (controller *ItemController) Classification(c echo.Context) (err error) {
 	searchResult, err := controller.Interactor.Classification(controller.queryStringParameters(c))
 	if err != nil {
@@ -63,6 +68,7 @@ func (controller *ItemController) Classification(c echo.Context) (err error) {
 	return
 }
 
+// Access function
 func (controller *ItemController) Access(c echo.Context) (err error) {
 	searchResult, err := controller.Interactor.AccessInfo(controller.queryStringParameters(c))
 	if err != nil {

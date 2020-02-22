@@ -13,6 +13,7 @@ import (
 	elastic "github.com/olivere/elastic/v7"
 )
 
+// ItemRepository struct
 type ItemRepository struct {
 	ElasticHandler *infrastructure.ElasticHandler
 }
@@ -183,10 +184,12 @@ func createClassificationQuery(q map[string]string) (*infrastructure.ElasticQuer
 
 }
 
+// Search function
 func (repo *ItemRepository) Search(q map[string]string) (*elastic.SearchResult, error) {
 	return repo.ElasticHandler.Search(createSearchQuery(q))
 }
 
+// Recommend function
 func (repo *ItemRepository) Recommend(q map[string]string) (*elastic.SearchResult, error) {
 	query := elastic.NewBoolQuery()
 	itemID, ok := q["item_id"]
@@ -214,6 +217,7 @@ func (repo *ItemRepository) Recommend(q map[string]string) (*elastic.SearchResul
 	return repo.ElasticHandler.Search(createRecommendItems(item, q))
 }
 
+// Classification function
 func (repo *ItemRepository) Classification(q map[string]string) (*elastic.SearchResult, error) {
 	query, err := createClassificationQuery(q)
 	if err != nil {
@@ -222,6 +226,7 @@ func (repo *ItemRepository) Classification(q map[string]string) (*elastic.Search
 	return repo.ElasticHandler.Search(query)
 }
 
+// AccessInfo function
 func (repo *ItemRepository) AccessInfo(q map[string]string) (*domain.Item, error) {
 	query := elastic.NewBoolQuery()
 	itemID, ok := q["item_id"]

@@ -17,7 +17,7 @@ import (
 )
 
 var (
-	ElasticsearchAddress = os.Getenv("ELASTICSEARCH_SERVICE_HOST_NAME")
+	elasticsearchAddress = os.Getenv("ELASTICSEARCH_SERVICE_HOST_NAME")
 )
 
 var echoLambda *echolamda.EchoLambda
@@ -26,7 +26,7 @@ var echoLambda *echolamda.EchoLambda
 // returns a proxy response
 func Handler(ctx context.Context, req events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
 	if echoLambda == nil {
-		elasticHandler, err := infrastructure.NewElasticHandler(ctx, ElasticsearchAddress)
+		elasticHandler, err := infrastructure.NewElasticHandler(ctx, elasticsearchAddress)
 		if err != nil {
 			sentry.CaptureException(err)
 			return events.APIGatewayProxyResponse{

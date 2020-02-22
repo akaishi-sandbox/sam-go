@@ -9,6 +9,9 @@ clean:
 test:
 	go test  -v ./...
 
+lint:
+	golint --set_exit_status ./...
+
 build:
 	GO111MODULE=on GOOS=linux GOARCH=amd64 go build -o bin/api ./
 

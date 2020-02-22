@@ -4,10 +4,12 @@ import (
 	elastic "github.com/olivere/elastic/v7"
 )
 
+// ItemInteractor struct
 type ItemInteractor struct {
 	ItemRepository ItemRepository
 }
 
+// Search function
 func (interactor *ItemInteractor) Search(q map[string]string) (interface{}, error) {
 	searchResult, err := interactor.ItemRepository.Search(q)
 	if err != nil {
@@ -22,6 +24,7 @@ func (interactor *ItemInteractor) Search(q map[string]string) (interface{}, erro
 	}, nil
 }
 
+// Recommend function
 func (interactor *ItemInteractor) Recommend(q map[string]string) (interface{}, error) {
 	searchResult, err := interactor.ItemRepository.Recommend(q)
 	if err != nil {
@@ -36,6 +39,7 @@ func (interactor *ItemInteractor) Recommend(q map[string]string) (interface{}, e
 	}, nil
 }
 
+// Classification function
 func (interactor *ItemInteractor) Classification(q map[string]string) (interface{}, error) {
 	searchResult, err := interactor.ItemRepository.Classification(q)
 	if err != nil {
@@ -50,6 +54,7 @@ func (interactor *ItemInteractor) Classification(q map[string]string) (interface
 	}, nil
 }
 
+// AccessInfo function
 func (interactor *ItemInteractor) AccessInfo(q map[string]string) (interface{}, error) {
 	updateItem, err := interactor.ItemRepository.AccessInfo(q)
 	if err != nil {

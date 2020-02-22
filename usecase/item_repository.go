@@ -5,6 +5,7 @@ import (
 	elastic "github.com/olivere/elastic/v7"
 )
 
+// ItemRepository interface
 type ItemRepository interface {
 	Search(q map[string]string) (*elastic.SearchResult, error)
 	Recommend(q map[string]string) (*elastic.SearchResult, error)
