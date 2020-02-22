@@ -22,6 +22,10 @@ Globals:
         REGION: !Ref Region
         ELASTICSEARCH_SERVICE_HOST_NAME: !Ref ElasticsearchServiceHostName
         SENTRY_DSN: !Ref SentryDsn
+  Api:
+    Cors:
+      AllowMethods: "'DELETE,GET,HEAD,OPTIONS,PATCH,POST,PUT'"
+      AllowOrigin: "'*'"
 
 Resources:
   Proxy:
