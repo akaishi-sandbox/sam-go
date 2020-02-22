@@ -47,20 +47,13 @@ jobs:
     - name: Deploy
       run: |
         set -xe
-cat << EOS
-{
-  "Region": "${AWS_DEFAULT_REGION}",
-  "ElasticsearchServiceHostName": "${ELASTICSEARCH_SERVICE_HOST_NAME}",
-  "SentryDsn": "${SENTRY_DSN}"
-}
-EOS > prod.json
+        echo ${ENV_JSON} > prod.json
         make deploy
       env:
         AWS_ACCESS_KEY_ID: ${{ secrets.DEV_AWS_ACCESS_KEY_ID }}
         AWS_SECRET_ACCESS_KEY: ${{ secrets.DEV_AWS_SECRET_ACCESS_KEY }}
         AWS_DEFAULT_REGION: ap-northeast-1
-        ELASTICSEARCH_SERVICE_HOST_NAME: ${{ secrets.DEV_ELASTICSEARCH_SERVICE_HOST_NAME }}
-        SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
+        ENV_JSON: ${{ secrets.DEV_JSON }}
 
   release-prod:
     name: Release prod
@@ -105,17 +98,10 @@ EOS > prod.json
     - name: Deploy
       run: |
         set -xe
-cat << EOS
-{
-  "Region": "${AWS_DEFAULT_REGION}",
-  "ElasticsearchServiceHostName": "${ELASTICSEARCH_SERVICE_HOST_NAME}",
-  "SentryDsn": "${SENTRY_DSN}"
-}
-EOS > prod.json
+        echo ${ENV_JSON} > prod.json
         make deploy
       env:
         AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
         AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
         AWS_DEFAULT_REGION: ap-northeast-1
-        ELASTICSEARCH_SERVICE_HOST_NAME: ${{ secrets.ELASTICSEARCH_SERVICE_HOST_NAME }}
-        SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
+        ENV_JSON: ${{ secrets.PROD_JSON }}
