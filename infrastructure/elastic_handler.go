@@ -34,6 +34,13 @@ func (handler *ElasticHandler) Search(eq *ElasticQuery) (*elastic.SearchResult, 
 		Do(handler.Context)
 }
 
+func (handler *ElasticHandler) Update(hit *elastic.SearchHit, update interface{}) (*elastic.UpdateResponse, error) {
+	return handler.Client.Update().Index(hit.Index).Id(hit.Id).
+		// Script(elastic.NewScript("ctx._source.access_counter = params.access_counter").Param("access_counter", numberOfAccess)).
+		// Script(elastic.NewScript("ctx._source.last_accessed_at = params.last_accessed_at").Param("last_accessed_at", lastAccessedAt)).
+		Do(handler.Context)
+}
+
 // NewElasticHandler instance
 func NewElasticHandler(ctx context.Context, elasticsearchAddress string) (*ElasticHandler, error) {
 	sess, err := session.NewSession()

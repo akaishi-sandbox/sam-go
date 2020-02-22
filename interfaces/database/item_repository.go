@@ -1,9 +1,14 @@
 package database
 
 import (
+	"encoding/json"
+	"fmt"
+	"reflect"
 	"strconv"
 	"strings"
+	"time"
 
+	"github.com/akaishi-sandbox/sam-go/domain"
 	"github.com/akaishi-sandbox/sam-go/infrastructure"
 	"github.com/akaishi-sandbox/sam-go/pkg"
 	elastic "github.com/olivere/elastic/v7"
@@ -97,7 +102,158 @@ func createSearchQuery(q map[string]string) *infrastructure.ElasticQuery {
 	}
 }
 
+func createRecommendItems(item domain.Item, q map[string]string) *infrastructure.ElasticQuery {
+	query := elastic.NewBoolQuery()
+	if itemID, ok := q["item_id"]; ok {
+		query = query.MustNot(elastic.NewTermQuery("item_id", itemID))
+	}
+	if brand, ok := q["brand"]; ok {
+		query = query.Filter(pkg.NewTermsString("brand", strings.Split(brand, ",")))
+	}
+	query = query.Filter(pkg.NewTermsString("gender", strings.Split(item.Gender, ",")))
+	query = query.Filter(pkg.NewTermsString("category", strings.Split(item.Category, ",")))
+
+	from := 0
+	if offset, ok := q["offset"]; ok {
+		if v, err := strconv.Atoi(offset); err == nil {
+			from = v
+		}
+	}
+	size := 36
+	if limit, ok := q["limit"]; ok {
+		if v, err := strconv.Atoi(limit); err == nil {
+			size = v
+		}
+	}
+
+	return &infrastructure.ElasticQuery{
+		Index: "items",
+		Query: query,
+		From:  from,
+		Size:  size,
+	}
+}
+
+func createClassificationQuery(q map[string]string) (*infrastructure.ElasticQuery, error) {
+	query := elastic.NewBoolQuery()
+	if gender, ok := q["gender"]; ok {
+		query = query.Filter(pkg.NewTermsString("gender", strings.Split(gender, ",")))
+	}
+	if title, ok := q["title"]; ok {
+		query = query.Filter(pkg.NewTermsString("title", strings.Split(title, ",")))
+	}
+	from := 0
+	if offset, ok := q["offset"]; ok {
+		if v, err := strconv.Atoi(offset); err == nil {
+			from = v
+		}
+	}
+	size := 100
+	if limit, ok := q["limit"]; ok {
+		if v, err := strconv.Atoi(limit); err == nil {
+			size = v
+		}
+	}
+
+	sort := elastic.SortInfo{Field: "sort_no", Ascending: true}
+
+	index, ok := q["index"]
+	if !ok {
+		return nil, fmt.Errorf("parameter not found")
+	}
+	switch index {
+	case "categories", "brands":
+		return &infrastructure.ElasticQuery{
+			Index:    index,
+			Query:    query,
+			SortInfo: sort,
+			From:     from,
+			Size:     size,
+		}, nil
+	default:
+		return nil, fmt.Errorf("not supported index")
+	}
+
+}
+
 func (repo *ItemRepository) Search(q map[string]string) (*elastic.SearchResult, error) {
-	query := createSearchQuery(q)
+	return repo.ElasticHandler.Search(createSearchQuery(q))
+}
+
+func (repo *ItemRepository) Recommend(q map[string]string) (*elastic.SearchResult, error) {
+	query := elastic.NewBoolQuery()
+	itemID, ok := q["item_id"]
+	if !ok {
+		return nil, fmt.Errorf("parameter not found")
+	}
+
+	query = query.Filter(elastic.NewTermQuery("item_id", itemID))
+
+	searchResult, err := repo.ElasticHandler.Search(&infrastructure.ElasticQuery{
+		Index: "items",
+		Query: query,
+		From:  0,
+		Size:  1,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	var item domain.Item
+	if err := json.Unmarshal(searchResult.Hits.Hits[0].Source, &item); err != nil {
+		return nil, err
+	}
+
+	return repo.ElasticHandler.Search(createRecommendItems(item, q))
+}
+
+func (repo *ItemRepository) Classification(q map[string]string) (*elastic.SearchResult, error) {
+	query, err := createClassificationQuery(q)
+	if err != nil {
+		return nil, err
+	}
 	return repo.ElasticHandler.Search(query)
+}
+
+func (repo *ItemRepository) AccessInfo(q map[string]string) (*domain.Item, error) {
+	query := elastic.NewBoolQuery()
+	itemID, ok := q["item_id"]
+	if !ok {
+		return nil, fmt.Errorf("parameter not found")
+	}
+
+	query = query.Filter(elastic.NewTermQuery("item_id", itemID))
+
+	searchResult, err := repo.ElasticHandler.Search(&infrastructure.ElasticQuery{
+		Index: "items",
+		Query: query,
+		From:  0,
+		Size:  100,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	// 更新元の商品はIDを元に検索しているので複数個存在する場合がある、そのためアクセス回数の最も大きい値を更新元の数字として取得する
+	updateItem := &domain.Item{
+		AccessCounter:  0,
+		LastAccessedAt: time.Now(),
+	}
+	var iType domain.Item
+	for _, item := range searchResult.Each(reflect.TypeOf(iType)) {
+		if i, ok := item.(domain.Item); ok {
+			if i.AccessCounter > updateItem.AccessCounter {
+				updateItem.AccessCounter = i.AccessCounter
+			}
+		}
+	}
+	updateItem.AccessCounter++
+
+	for _, hit := range searchResult.Hits.Hits {
+		if _, err := repo.ElasticHandler.Update(hit, updateItem); err != nil {
+			return nil, err
+		}
+	}
+
+	return updateItem, nil
 }
