@@ -24,7 +24,7 @@ Globals:
         SENTRY_DSN: !Ref SentryDsn
 
 Resources:
-  ProxyFunction:
+  Proxy:
     Type: AWS::Serverless::Function
     Properties:
       CodeUri: bin/
