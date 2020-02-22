@@ -11,10 +11,6 @@ test:
 
 build:
 	GO111MODULE=on GOOS=linux GOARCH=amd64 go build -o bin/api ./
-	GO111MODULE=on GOOS=linux GOARCH=amd64 go build -o bin/search-items ./function/search-items
-	GO111MODULE=on GOOS=linux GOARCH=amd64 go build -o bin/classification-info ./function/classification-info
-	GO111MODULE=on GOOS=linux GOARCH=amd64 go build -o bin/recommend-items ./function/recommend-items
-	GO111MODULE=on GOOS=linux GOARCH=amd64 go build -o bin/access-info ./function/access-info
 
 local:
 	sam local start-api -p 3001 -t ./template.yaml --env-vars ./env.json --region ap-northeast-1
