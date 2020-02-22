@@ -10,7 +10,6 @@ import (
 
 	"github.com/akaishi-sandbox/sam-go/domain"
 	"github.com/akaishi-sandbox/sam-go/infrastructure"
-	"github.com/akaishi-sandbox/sam-go/pkg"
 	elastic "github.com/olivere/elastic/v7"
 )
 
@@ -18,22 +17,30 @@ type ItemRepository struct {
 	ElasticHandler *infrastructure.ElasticHandler
 }
 
+func newTermsString(name string, input []string) *elastic.TermsQuery {
+	values := make([]interface{}, len(input))
+	for i, s := range input {
+		values[i] = s
+	}
+	return elastic.NewTermsQuery(name, values...)
+}
+
 func createSearchQuery(q map[string]string) *infrastructure.ElasticQuery {
 	query := elastic.NewBoolQuery()
 	if itemID, ok := q["item_id"]; ok && len(itemID) > 0 {
-		query = query.Filter(pkg.NewTermsString("item_id", strings.Split(itemID, ",")))
+		query = query.Filter(newTermsString("item_id", strings.Split(itemID, ",")))
 	}
 	if gender, ok := q["gender"]; ok && len(gender) > 0 {
-		query = query.Filter(pkg.NewTermsString("gender", strings.Split(gender, ",")))
+		query = query.Filter(newTermsString("gender", strings.Split(gender, ",")))
 	}
 	if brand, ok := q["brand"]; ok && len(brand) > 0 {
-		query = query.Filter(pkg.NewTermsString("brand", strings.Split(brand, ",")))
+		query = query.Filter(newTermsString("brand", strings.Split(brand, ",")))
 	}
 	if category, ok := q["category"]; ok && len(category) > 0 {
-		query = query.Filter(pkg.NewTermsString("category", strings.Split(category, ",")))
+		query = query.Filter(newTermsString("category", strings.Split(category, ",")))
 	}
 	if discountFlag, ok := q["discount_flag"]; ok && len(discountFlag) > 0 {
-		query = query.Filter(pkg.NewTermsString("discount_flag", strings.Split(discountFlag, ",")))
+		query = query.Filter(newTermsString("discount_flag", strings.Split(discountFlag, ",")))
 	}
 	if minPrice, ok := q["min_price"]; ok {
 		if price, err := strconv.Atoi(minPrice); err == nil {
@@ -108,10 +115,10 @@ func createRecommendItems(item domain.Item, q map[string]string) *infrastructure
 		query = query.MustNot(elastic.NewTermQuery("item_id", itemID))
 	}
 	if brand, ok := q["brand"]; ok {
-		query = query.Filter(pkg.NewTermsString("brand", strings.Split(brand, ",")))
+		query = query.Filter(newTermsString("brand", strings.Split(brand, ",")))
 	}
-	query = query.Filter(pkg.NewTermsString("gender", strings.Split(item.Gender, ",")))
-	query = query.Filter(pkg.NewTermsString("category", strings.Split(item.Category, ",")))
+	query = query.Filter(newTermsString("gender", strings.Split(item.Gender, ",")))
+	query = query.Filter(newTermsString("category", strings.Split(item.Category, ",")))
 
 	from := 0
 	if offset, ok := q["offset"]; ok {
@@ -137,10 +144,10 @@ func createRecommendItems(item domain.Item, q map[string]string) *infrastructure
 func createClassificationQuery(q map[string]string) (*infrastructure.ElasticQuery, error) {
 	query := elastic.NewBoolQuery()
 	if gender, ok := q["gender"]; ok {
-		query = query.Filter(pkg.NewTermsString("gender", strings.Split(gender, ",")))
+		query = query.Filter(newTermsString("gender", strings.Split(gender, ",")))
 	}
 	if title, ok := q["title"]; ok {
-		query = query.Filter(pkg.NewTermsString("title", strings.Split(title, ",")))
+		query = query.Filter(newTermsString("title", strings.Split(title, ",")))
 	}
 	from := 0
 	if offset, ok := q["offset"]; ok {

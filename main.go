@@ -8,7 +8,6 @@ import (
 
 	"github.com/akaishi-sandbox/sam-go/infrastructure"
 	"github.com/akaishi-sandbox/sam-go/interfaces/controllers"
-	"github.com/akaishi-sandbox/sam-go/pkg/sentryecho"
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-lambda-go/lambda"
 	echolamda "github.com/awslabs/aws-lambda-go-api-proxy/echo"
@@ -31,7 +30,7 @@ func Handler(ctx context.Context, req events.APIGatewayProxyRequest) (events.API
 		if err != nil {
 			sentry.CaptureException(err)
 			return events.APIGatewayProxyResponse{
-				Body:       fmt.Sprintf("error"),
+				Body:       fmt.Sprintf("error:%v", err),
 				StatusCode: http.StatusInternalServerError,
 			}, err
 		}
@@ -39,7 +38,11 @@ func Handler(ctx context.Context, req events.APIGatewayProxyRequest) (events.API
 		e := echo.New()
 		e.Use(middleware.Logger())
 		e.Use(middleware.Recover())
-		e.Use(sentryecho.New(sentryecho.Options{}))
+		e.Use(middleware.CORSWithConfig(middleware.CORSConfig{
+			AllowOrigins: []string{"*"},
+			AllowMethods: []string{echo.GET, echo.HEAD, echo.PUT, echo.PATCH, echo.POST, echo.DELETE},
+		}))
+		e.Use(infrastructure.SentryechoNew(infrastructure.SentryechoOptions{}))
 
 		itemController := controllers.NewItemController(elasticHandler)
 
