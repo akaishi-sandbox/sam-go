@@ -20,8 +20,7 @@ jobs:
 
     - name: sam install
       run: |
-        set -x
-        apt update
+        set -xe
         apt install -y --no-install-recommends python3-setuptools
         pip3 install aws-sam-cli
 
