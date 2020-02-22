@@ -4,8 +4,67 @@ on:
     branches:
       - master
 jobs:
-  release:
-    name: Release
+  release-dev:
+    name: Release dev
+    if: github.ref == 'refs/heads/develop'
+    runs-on: ubuntu-latest
+    steps:
+
+    - name: Set up Go 1.13
+      uses: actions/setup-go@v1
+      with:
+        go-version: 1.13
+      id: go
+
+    - name: Check out code into the Go module directory
+      uses: actions/checkout@v1
+
+    - name: sam install
+      run: |
+        set -xe
+        sudo apt-get install -y --no-install-recommends python3-setuptools
+        sudo python3 -m pip install --user --upgrade setuptools wheel
+        sudo pip3 install aws-sam-cli
+        sam --help
+
+    - name: Build
+      run: |
+        set -xe
+        make build
+      env:
+        GO111MODULE: "on"
+
+    - name: Package
+      run: |
+        set -xe
+        make package
+      env:
+        AWS_ACCESS_KEY_ID: ${{ secrets.DEV_AWS_ACCESS_KEY_ID }}
+        AWS_SECRET_ACCESS_KEY: ${{ secrets.DEV_AWS_SECRET_ACCESS_KEY }}
+        AWS_DEFAULT_REGION: ap-northeast-1
+        S3_BUCKET: unisize-artifacts-develop
+
+    - name: Deploy
+      run: |
+        set -xe
+cat << EOS
+{
+  "Region": "${AWS_DEFAULT_REGION}",
+  "ElasticsearchServiceHostName": "${ELASTICSEARCH_SERVICE_HOST_NAME}",
+  "SentryDsn": "${SENTRY_DSN}"
+}
+EOS > prod.json
+        make deploy
+      env:
+        AWS_ACCESS_KEY_ID: ${{ secrets.DEV_AWS_ACCESS_KEY_ID }}
+        AWS_SECRET_ACCESS_KEY: ${{ secrets.DEV_AWS_SECRET_ACCESS_KEY }}
+        AWS_DEFAULT_REGION: ap-northeast-1
+        ELASTICSEARCH_SERVICE_HOST_NAME: ${{ secrets.DEV_ELASTICSEARCH_SERVICE_HOST_NAME }}
+        SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
+
+  release-prod:
+    name: Release prod
+    if: github.ref == 'refs/heads/master'
     runs-on: ubuntu-latest
     steps:
 
@@ -41,12 +100,22 @@ jobs:
         AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
         AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
         AWS_DEFAULT_REGION: ap-northeast-1
+        S3_BUCKET: unisize-artifacts-develop
 
     - name: Deploy
       run: |
         set -xe
+cat << EOS
+{
+  "Region": "${AWS_DEFAULT_REGION}",
+  "ElasticsearchServiceHostName": "${ELASTICSEARCH_SERVICE_HOST_NAME}",
+  "SentryDsn": "${SENTRY_DSN}"
+}
+EOS > prod.json
         make deploy
       env:
         AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
         AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
         AWS_DEFAULT_REGION: ap-northeast-1
+        ELASTICSEARCH_SERVICE_HOST_NAME: ${{ secrets.ELASTICSEARCH_SERVICE_HOST_NAME }}
+        SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
