@@ -22,8 +22,8 @@ jobs:
       run: |
         set -xe
         sudo apt-get install -y --no-install-recommends python3-setuptools
-        python3 -m pip install --user --upgrade setuptools wheel
-        pip3 install aws-sam-cli
+        sudo python3 -m pip install --user --upgrade setuptools wheel
+        sudo pip3 install aws-sam-cli
         sam --help
 
     - name: Build
