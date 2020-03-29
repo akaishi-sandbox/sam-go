@@ -53,6 +53,28 @@ func createSearchQuery(q map[string]string) *infrastructure.ElasticQuery {
 			query = query.Filter(elastic.NewRangeQuery("lowest_price").Lte(price))
 		}
 	}
+	var skuQuery *elastic.BoolQuery
+	if minBmi, ok := q["min_bmi"]; ok {
+		if bmi, err := strconv.ParseFloat(minBmi, 64); err == nil {
+			if skuQuery == nil {
+				skuQuery = elastic.NewBoolQuery()
+			}
+			skuQuery = skuQuery.Filter(elastic.NewRangeQuery("SKUs.bmi").Gte(bmi))
+		}
+	}
+	if maxBmi, ok := q["max_bmi"]; ok {
+		if bmi, err := strconv.ParseFloat(maxBmi, 64); err == nil {
+			if skuQuery == nil {
+				skuQuery = elastic.NewBoolQuery()
+			}
+			skuQuery = skuQuery.Filter(elastic.NewRangeQuery("SKUs.bmi").Lte(bmi))
+		}
+	}
+	if skuQuery != nil {
+		// bmi条件の時はstockがあることの確認
+		skuQuery = skuQuery.Filter(elastic.NewRangeQuery("SKUs.stock").Gte(1))
+		query = query.Must(elastic.NewNestedQuery("SKUs", skuQuery))
+	}
 	if keywords, ok := q["keywords"]; ok && len(keywords) > 0 {
 		// 全角スペースを半角スペースにした後、半角スペースで分解する
 		for _, keyword := range strings.Split(strings.NewReplacer("　", " ").Replace(keywords), " ") {
